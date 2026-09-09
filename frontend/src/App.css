@@ -27,27 +27,38 @@ select {
 .login-page {
   min-height: 100vh;
   width: 100%;
+
   display: flex;
   justify-content: center;
   align-items: center;
+
   background: #f4f7fb;
+
   padding: 20px;
 }
 
 .login-card {
   width: 100%;
   max-width: 420px;
+
   background: #ffffff;
+
   padding: 40px;
+
   border-radius: 16px;
+
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
-/* LOGIN LOGO */
+
+/* =====================================================
+   LOGIN LOGO
+===================================================== */
 
 .login-card .logo {
   width: 58px;
   height: 58px;
+
   margin: 0 auto 20px;
 
   display: flex;
@@ -64,7 +75,9 @@ select {
 }
 
 
-/* LOGIN HEADING */
+/* =====================================================
+   MAIN LOGIN HEADING
+===================================================== */
 
 .login-card h1 {
   margin: 0 0 10px;
@@ -74,11 +87,14 @@ select {
   font-size: 28px;
   font-weight: 700;
 
-  color: #172554;
+  /* Main heading color */
+  color: #1e3a8a;
 }
 
 
-/* LOGIN SUBTITLE */
+/* =====================================================
+   LOGIN SUBTITLE
+===================================================== */
 
 .login-card .subtitle {
   margin: 0 0 30px;
@@ -91,7 +107,9 @@ select {
 }
 
 
-/* LOGIN FORM */
+/* =====================================================
+   LOGIN FORM
+===================================================== */
 
 .login-card form {
   display: flex;
@@ -129,6 +147,7 @@ select {
   padding: 0 12px;
 
   border: 1px solid #d1d5db;
+
   border-radius: 8px;
 
   background: #ffffff;
@@ -155,6 +174,7 @@ select {
   border-radius: 8px;
 
   background: #2563eb;
+
   color: #ffffff;
 
   font-size: 15px;
@@ -187,6 +207,7 @@ select {
 
 .app {
   min-height: 100vh;
+
   background: #f4f7fb;
 }
 
@@ -230,6 +251,7 @@ select {
   border-radius: 10px;
 
   background: #2563eb;
+
   color: #ffffff;
 
   font-size: 22px;
@@ -264,6 +286,7 @@ select {
   border-radius: 7px;
 
   background: #ef4444;
+
   color: #ffffff;
 
   font-size: 14px;
@@ -329,6 +352,7 @@ select {
 
 .sidebar button.active {
   background: #2563eb;
+
   color: #ffffff;
 
   font-weight: 600;
@@ -504,6 +528,7 @@ tbody tr:hover {
   color: #92400e;
 
   font-size: 12px;
+
   font-weight: 600;
 }
 
@@ -754,6 +779,8 @@ tbody tr:hover {
 
   .login-card h1 {
     font-size: 24px;
+
+    color: #1e3a8a;
   }
 
   .navbar {
