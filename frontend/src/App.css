@@ -87,7 +87,6 @@ select {
   font-size: 28px;
   font-weight: 700;
 
-  /* Main heading color */
   color: #1e3a8a;
 }
 
@@ -119,7 +118,9 @@ select {
 }
 
 
-/* LABEL */
+/* =====================================================
+   LOGIN LABELS
+===================================================== */
 
 .login-card form label {
   display: block;
@@ -138,7 +139,9 @@ select {
 }
 
 
-/* INPUT */
+/* =====================================================
+   LOGIN INPUTS
+===================================================== */
 
 .login-card form input {
   width: 100%;
@@ -152,6 +155,8 @@ select {
 
   background: #ffffff;
 
+  color: #111827;
+
   font-size: 15px;
 
   outline: none;
@@ -159,10 +164,37 @@ select {
 
 .login-card form input:focus {
   border-color: #2563eb;
+
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.login-card form input::placeholder {
+  color: #9ca3af;
 }
 
 
-/* LOGIN BUTTON */
+/* =====================================================
+   PASSWORD DOT VISIBILITY FIX
+===================================================== */
+
+.login-card form input[type="password"] {
+  color: #111827 !important;
+
+  -webkit-text-fill-color: #111827 !important;
+
+  caret-color: #111827;
+}
+
+.login-card form input[type="password"]::placeholder {
+  color: #9ca3af;
+
+  -webkit-text-fill-color: #9ca3af;
+}
+
+
+/* =====================================================
+   LOGIN BUTTON
+===================================================== */
 
 .login-card form button {
   width: 100%;
@@ -171,6 +203,7 @@ select {
   margin-top: 25px;
 
   border: none;
+
   border-radius: 8px;
 
   background: #2563eb;
@@ -188,7 +221,9 @@ select {
 }
 
 
-/* DEMO LOGIN */
+/* =====================================================
+   DEMO LOGIN
+===================================================== */
 
 .login-card .demo {
   margin: 22px 0 0;
@@ -231,10 +266,13 @@ select {
 }
 
 
-/* BRAND */
+/* =====================================================
+   BRAND
+===================================================== */
 
 .brand {
   display: flex;
+
   align-items: center;
 
   gap: 12px;
@@ -277,12 +315,15 @@ select {
 }
 
 
-/* LOGOUT */
+/* =====================================================
+   LOGOUT
+===================================================== */
 
 .logout {
   padding: 9px 18px;
 
   border: none;
+
   border-radius: 7px;
 
   background: #ef4444;
@@ -333,6 +374,7 @@ select {
   padding: 13px 15px;
 
   border: none;
+
   border-radius: 8px;
 
   background: transparent;
@@ -381,6 +423,7 @@ select {
 
 .welcome {
   margin-top: 7px;
+
   margin-bottom: 30px;
 
   color: #6b7280;
@@ -541,16 +584,19 @@ tbody tr:hover {
   max-width: 600px;
 
   display: flex;
+
   flex-direction: column;
 }
 
 .payment-form label {
   margin-top: 18px;
+
   margin-bottom: 8px;
 
   color: #374151;
 
   font-size: 14px;
+
   font-weight: 600;
 }
 
@@ -571,6 +617,8 @@ tbody tr:hover {
   border-radius: 8px;
 
   background: #ffffff;
+
+  color: #111827;
 
   font-size: 14px;
 
