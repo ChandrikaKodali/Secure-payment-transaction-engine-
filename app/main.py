@@ -7,10 +7,10 @@ import os
 import psycopg2
 from psycopg2.errors import UniqueViolation
 from dotenv import load_dotenv
+from pathlib import Path
 
 from app.models import Payment
 
-from pathlib import Path
 
 # --------------------------------------------------
 # Load environment variables
@@ -20,6 +20,7 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 
 API_KEY = os.getenv("API_KEY")
+
 
 # --------------------------------------------------
 # API Key configuration
@@ -60,6 +61,7 @@ app = FastAPI(
     description="A secure payment transaction processing API",
     version="1.0.0"
 )
+
 
 # --------------------------------------------------
 # CORS
@@ -113,11 +115,71 @@ def is_valid_status_transition(
 def get_connection():
     return psycopg2.connect(
         host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT"),
+        port=os.getenv("DB_PORT", "5432"),
         database=os.getenv("DB_NAME"),
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD")
     )
+
+
+# --------------------------------------------------
+# Create database tables automatically
+# --------------------------------------------------
+
+def create_tables():
+    connection = get_connection()
+    cursor = connection.cursor()
+
+    try:
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS payments (
+                id SERIAL PRIMARY KEY,
+                transaction_id VARCHAR(100) UNIQUE NOT NULL,
+                amount DECIMAL(12,2) NOT NULL,
+                currency VARCHAR(10) NOT NULL,
+                status VARCHAR(20) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS payment_audit_logs (
+                id SERIAL PRIMARY KEY,
+                transaction_id VARCHAR(100) NOT NULL,
+                old_status VARCHAR(20) NOT NULL,
+                new_status VARCHAR(20) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+
+        connection.commit()
+        print("Database tables created successfully")
+
+    except Exception as error:
+        connection.rollback()
+        print("Database table creation error:", error)
+        raise
+
+    finally:
+        cursor.close()
+        connection.close()
+
+
+# --------------------------------------------------
+# Startup
+# --------------------------------------------------
+
+@app.on_event("startup")
+def startup_event():
+    try:
+        create_tables()
+        print("Database initialization completed")
+    except Exception as error:
+        print("Database initialization failed:", error)
 
 
 # --------------------------------------------------
@@ -337,7 +399,6 @@ def update_payment_status(
         current_status = result[4]
         new_status = status_update.status
 
-        # Validate status transition
         if not is_valid_status_transition(
             current_status,
             new_status
@@ -353,7 +414,6 @@ def update_payment_status(
                 }
             )
 
-        # Update payment
         cursor.execute(
             """
             UPDATE payments
@@ -366,7 +426,6 @@ def update_payment_status(
             )
         )
 
-        # Add audit log
         cursor.execute(
             """
             INSERT INTO payment_audit_logs
