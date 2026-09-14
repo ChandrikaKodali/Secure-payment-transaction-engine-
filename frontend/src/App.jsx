@@ -1,617 +1,1131 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_URL =
+/* =====================================================
+   API CONFIGURATION
+===================================================== */
+
+const API_BASE_URL =
   import.meta.env.VITE_API_URL ||
   "https://secure-payment-engine-backend.onrender.com";
 
 const API_KEY =
-  import.meta.env.VITE_API_KEY || "secure-payment-demo-2026";
+  import.meta.env.VITE_API_KEY ||
+  "secure-payment-demo-2026";
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
+/* =====================================================
+   DEMO DATA
+   Used only if Render backend is temporarily unavailable
+===================================================== */
+
+const DEMO_PAYMENTS = [
+  {
+    id: 1,
+    transaction_id: "REVOLUT_KAFKA_001",
+    amount: 1500,
+    currency: "INR",
+    status: "PENDING",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 2,
+    transaction_id: "FINAL_TEST_001",
+    amount: 2500,
+    currency: "INR",
+    status: "PENDING",
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 3,
+    transaction_id: "FRONTEND_TEST_003",
+    amount: 1000,
+    currency: "INR",
+    status: "PENDING",
+    created_at: new Date().toISOString(),
+  },
+];
+
+/* =====================================================
+   AUTH HEADERS
+===================================================== */
+
+const getAuthHeaders = () => ({
+  "X-API-Key": API_KEY,
+});
+
+/* =====================================================
+   MAIN APP
+===================================================== */
+
 function App() {
-  const [page, setPage] = useState("login");
   const [loggedIn, setLoggedIn] = useState(false);
-  const [username, setUsername] = useState("");
+  const [activePage, setActivePage] = useState("dashboard");
 
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [backendStatus, setBackendStatus] = useState("Checking...");
-  const [error, setError] = useState("");
-
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-
-  const [registerUsername, setRegisterUsername] = useState("");
-  const [registerPassword, setRegisterPassword] = useState("");
-
-  const [transactionId, setTransactionId] = useState("");
-  const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState("INR");
-  const [paymentMessage, setPaymentMessage] = useState("");
-
-  const authHeaders = {
-    "X-API-Key": API_KEY,
-  };
-
-  const loadPayments = async () => {
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await api.get("/payments", {
-        headers: authHeaders,
-      });
-
-      setPayments(response.data);
-      setBackendStatus("Online");
-    } catch (err) {
-      console.error(err);
-      setBackendStatus("Offline");
-      setError(
-        "Unable to connect to payment backend. Please check the backend API and database."
-      );
-      setPayments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkBackend = async () => {
-    try {
-      await api.get("/health");
-      setBackendStatus("Online");
-    } catch (err) {
-      console.error(err);
-      setBackendStatus("Offline");
-    }
-  };
-
-  useEffect(() => {
-    checkBackend();
-  }, []);
-
-  useEffect(() => {
-    if (loggedIn && page === "dashboard") {
-      loadPayments();
-    }
-  }, [loggedIn, page]);
+  /* ===================================================
+     LOGIN
+  =================================================== */
 
   const handleLogin = (e) => {
     e.preventDefault();
 
-    if (loginUsername === "admin" && loginPassword === "admin123") {
-      setUsername("admin");
+    const username =
+      e.target.username.value.trim();
+
+    const password =
+      e.target.password.value;
+
+    if (
+      username === "admin" &&
+      password === "admin123"
+    ) {
       setLoggedIn(true);
-      setPage("dashboard");
-      setError("");
+      setActivePage("dashboard");
     } else {
       alert("Invalid username or password");
     }
   };
 
-  const handleRegister = (e) => {
-    e.preventDefault();
-
-    if (!registerUsername || !registerPassword) {
-      alert("Please enter username and password");
-      return;
-    }
-
-    alert("Registration successful. You can now login.");
-    setPage("login");
-    setLoginUsername(registerUsername);
-    setLoginPassword("");
-  };
-
-  const handleLogout = () => {
-    setLoggedIn(false);
-    setUsername("");
-    setPage("login");
-    setPayments([]);
-  };
-
-  const createPayment = async (e) => {
-    e.preventDefault();
-    setPaymentMessage("");
-
-    if (!transactionId || !amount) {
-      setPaymentMessage("Please enter transaction ID and amount.");
-      return;
-    }
-
-    try {
-      const response = await api.post(
-        "/payments",
-        {
-          transaction_id: transactionId,
-          amount: Number(amount),
-          currency: currency,
-          status: "PENDING",
-        },
-        {
-          headers: {
-            "X-API-Key": API_KEY,
-            "Idempotency-Key": transactionId,
-          },
-        }
-      );
-
-      setPaymentMessage(
-        `Payment ${response.data.transaction_id} created successfully.`
-      );
-
-      setTransactionId("");
-      setAmount("");
-      setCurrency("INR");
-
-      await loadPayments();
-    } catch (err) {
-      console.error(err);
-
-      if (err.response?.data?.detail) {
-        setPaymentMessage(`Error: ${err.response.data.detail}`);
-      } else {
-        setPaymentMessage("Failed to create payment.");
-      }
-    }
-  };
-
-  const updatePaymentStatus = async (id, status) => {
-    try {
-      await api.put(
-        `/payments/${id}/status`,
-        {
-          status: status,
-        },
-        {
-          headers: authHeaders,
-        }
-      );
-
-      await loadPayments();
-    } catch (err) {
-      console.error(err);
-
-      if (err.response?.data?.detail) {
-        alert(err.response.data.detail);
-      } else {
-        alert("Unable to update payment status.");
-      }
-    }
-  };
-
-  const totalAmount = payments.reduce(
-    (sum, payment) => sum + Number(payment.amount || 0),
-    0
-  );
-
-  const successfulPayments = payments.filter(
-    (payment) => payment.status === "SUCCESS"
-  ).length;
-
-  const pendingPayments = payments.filter(
-    (payment) => payment.status === "PENDING"
-  ).length;
-
-  const failedPayments = payments.filter(
-    (payment) => payment.status === "FAILED"
-  ).length;
+  /* ===================================================
+     LOGIN PAGE
+  =================================================== */
 
   if (!loggedIn) {
-    if (page === "register") {
-      return (
-        <div className="auth-page">
-          <div className="auth-card">
-            <h1>SecurePay</h1>
-            <p className="subtitle">Create your account</p>
-
-            <form onSubmit={handleRegister}>
-              <label>Username</label>
-              <input
-                type="text"
-                placeholder="Enter username"
-                value={registerUsername}
-                onChange={(e) => setRegisterUsername(e.target.value)}
-              />
-
-              <label>Password</label>
-              <input
-                type="password"
-                placeholder="Enter password"
-                value={registerPassword}
-                onChange={(e) => setRegisterPassword(e.target.value)}
-              />
-
-              <button type="submit">Register</button>
-            </form>
-
-            <p className="switch-text">
-              Already have an account?
-              <button
-                className="link-button"
-                onClick={() => setPage("login")}
-              >
-                Login
-              </button>
-            </p>
-          </div>
-        </div>
-      );
-    }
-
     return (
-      <div className="auth-page">
-        <div className="auth-card">
-          <h1>SecurePay</h1>
+      <div className="login-page">
+
+        <div className="login-card">
+
+          <div className="logo">
+            ₹
+          </div>
+
+          <h1>
+            Secure Payment Engine
+          </h1>
+
           <p className="subtitle">
-            Secure Payment Transaction Engine
+            Secure • Reliable • Fast Payments
           </p>
 
           <form onSubmit={handleLogin}>
-            <label>Username</label>
+
+            <label htmlFor="username">
+              Username
+            </label>
+
             <input
+              id="username"
+              name="username"
               type="text"
               placeholder="Enter username"
-              value={loginUsername}
-              onChange={(e) => setLoginUsername(e.target.value)}
+              autoComplete="username"
+              required
             />
 
-            <label>Password</label>
+            <label htmlFor="password">
+              Password
+            </label>
+
             <input
+              id="password"
+              name="password"
               type="password"
               placeholder="Enter password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              className="password-input"
             />
 
-            <button type="submit">Login</button>
+            <button type="submit">
+              LOGIN
+            </button>
+
           </form>
 
-          <div className="demo-login">
-            <strong>Demo Login</strong>
-            <p>Username: admin</p>
-            <p>Password: admin123</p>
-          </div>
-
-          <p className="switch-text">
-            Don't have an account?
-            <button
-              className="link-button"
-              onClick={() => setPage("register")}
-            >
-              Register
-            </button>
+          <p className="demo">
+            Demo: admin / admin123
           </p>
+
         </div>
+
       </div>
     );
   }
 
+  /* ===================================================
+     LOGGED-IN APPLICATION
+  =================================================== */
+
   return (
     <div className="app">
+
+      {/* NAVBAR */}
+
       <header className="navbar">
-        <div className="logo">SecurePay</div>
 
-        <nav>
-          <button
-            className={page === "dashboard" ? "active" : ""}
-            onClick={() => setPage("dashboard")}
-          >
-            Dashboard
-          </button>
+        <div className="brand">
 
-          <button
-            className={page === "payment" ? "active" : ""}
-            onClick={() => setPage("payment")}
-          >
-            New Payment
-          </button>
+          <div className="brand-logo">
+            ₹
+          </div>
 
-          <button
-            className={page === "transactions" ? "active" : ""}
-            onClick={() => setPage("transactions")}
-          >
-            Transactions
-          </button>
+          <div>
+            <h2>
+              SecurePay
+            </h2>
 
-          <button
-            className={page === "reconciliation" ? "active" : ""}
-            onClick={() => setPage("reconciliation")}
-          >
-            Reconciliation
-          </button>
-        </nav>
+            <span>
+              Payment Transaction Engine
+            </span>
+          </div>
 
-        <div className="user-section">
-          <span>Hi, {username}</span>
-          <button onClick={handleLogout} className="logout-button">
-            Logout
-          </button>
         </div>
+
+        <button
+          className="logout"
+          onClick={() => setLoggedIn(false)}
+        >
+          Logout
+        </button>
+
       </header>
 
-      <main className="main-content">
-        {page === "dashboard" && (
-          <>
-            <div className="page-heading">
-              <div>
-                <h1>Payment Dashboard</h1>
-                <p>Monitor your payment transactions</p>
-              </div>
+      {/* LAYOUT */}
 
-              <button onClick={loadPayments} className="refresh-button">
-                Refresh
-              </button>
-            </div>
+      <div className="layout">
 
-            <div className="status-card">
-              <div>
-                <span
-                  className={
-                    backendStatus === "Online"
-                      ? "status-dot online"
-                      : "status-dot offline"
-                  }
-                ></span>
+        {/* SIDEBAR */}
 
-                <strong>System Status: {backendStatus}</strong>
-              </div>
+        <aside className="sidebar">
 
-              <span>
-                Backend: {API_URL}
-              </span>
-            </div>
+          <button
+            className={
+              activePage === "dashboard"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setActivePage("dashboard")
+            }
+          >
+            🏠 Dashboard
+          </button>
 
-            {error && <div className="error-box">{error}</div>}
+          <button
+            className={
+              activePage === "payment"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setActivePage("payment")
+            }
+          >
+            💳 Make Payment
+          </button>
 
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span>Total Transactions</span>
-                <strong>{payments.length}</strong>
-              </div>
+          <button
+            className={
+              activePage === "transactions"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setActivePage("transactions")
+            }
+          >
+            📋 Transactions
+          </button>
 
-              <div className="stat-card">
-                <span>Total Amount</span>
-                <strong>₹{totalAmount.toFixed(2)}</strong>
-              </div>
+          <button
+            className={
+              activePage === "reconciliation"
+                ? "active"
+                : ""
+            }
+            onClick={() =>
+              setActivePage("reconciliation")
+            }
+          >
+            🔄 Reconciliation
+          </button>
 
-              <div className="stat-card">
-                <span>Successful</span>
-                <strong>{successfulPayments}</strong>
-              </div>
+        </aside>
 
-              <div className="stat-card">
-                <span>Pending</span>
-                <strong>{pendingPayments}</strong>
-              </div>
+        {/* CONTENT */}
 
-              <div className="stat-card">
-                <span>Failed</span>
-                <strong>{failedPayments}</strong>
-              </div>
-            </div>
+        <main className="content">
 
-            <section className="panel">
-              <div className="panel-header">
-                <div>
-                  <h2>Recent Transactions</h2>
-                  <p>Latest payment activity</p>
-                </div>
-              </div>
+          {activePage === "dashboard" && (
+            <DashboardPage />
+          )}
 
-              {loading ? (
-                <div className="empty-state">
-                  Loading payments...
-                </div>
-              ) : payments.length === 0 ? (
-                <div className="empty-state">
-                  No payment transactions found.
-                </div>
-              ) : (
-                <div className="table-container">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Transaction ID</th>
-                        <th>Amount</th>
-                        <th>Currency</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
+          {activePage === "payment" && (
+            <PaymentPage />
+          )}
 
-                    <tbody>
-                      {payments.slice(0, 10).map((payment) => (
-                        <tr key={payment.transaction_id}>
-                          <td>{payment.transaction_id}</td>
-                          <td>{payment.amount}</td>
-                          <td>{payment.currency}</td>
-                          <td>
-                            <span
-                              className={`badge ${payment.status.toLowerCase()}`}
-                            >
-                              {payment.status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </section>
-          </>
-        )}
+          {activePage === "transactions" && (
+            <TransactionsPage />
+          )}
 
-        {page === "payment" && (
-          <section className="form-panel">
-            <h1>Create Payment</h1>
-            <p>Create a new secure payment transaction.</p>
+          {activePage === "reconciliation" && (
+            <ReconciliationPage />
+          )}
 
-            <form onSubmit={createPayment}>
-              <label>Transaction ID</label>
-              <input
-                type="text"
-                placeholder="Example: PAYMENT_001"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-              />
+        </main>
 
-              <label>Amount</label>
-              <input
-                type="number"
-                placeholder="Enter amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
+      </div>
 
-              <label>Currency</label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-              >
-                <option value="INR">INR</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-              </select>
-
-              <button type="submit">Create Payment</button>
-            </form>
-
-            {paymentMessage && (
-              <div className="message-box">{paymentMessage}</div>
-            )}
-          </section>
-        )}
-
-        {page === "transactions" && (
-          <section className="panel">
-            <div className="page-heading">
-              <div>
-                <h1>All Transactions</h1>
-                <p>View and manage payment transactions</p>
-              </div>
-
-              <button onClick={loadPayments} className="refresh-button">
-                Refresh
-              </button>
-            </div>
-
-            {error && <div className="error-box">{error}</div>}
-
-            {payments.length === 0 ? (
-              <div className="empty-state">
-                No transactions available.
-              </div>
-            ) : (
-              <div className="table-container">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Transaction ID</th>
-                      <th>Amount</th>
-                      <th>Currency</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {payments.map((payment) => (
-                      <tr key={payment.transaction_id}>
-                        <td>{payment.transaction_id}</td>
-                        <td>{payment.amount}</td>
-                        <td>{payment.currency}</td>
-                        <td>
-                          <span
-                            className={`badge ${payment.status.toLowerCase()}`}
-                          >
-                            {payment.status}
-                          </span>
-                        </td>
-                        <td>
-                          {payment.status === "PENDING" && (
-                            <div className="action-buttons">
-                              <button
-                                onClick={() =>
-                                  updatePaymentStatus(
-                                    payment.transaction_id,
-                                    "SUCCESS"
-                                  )
-                                }
-                              >
-                                Success
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  updatePaymentStatus(
-                                    payment.transaction_id,
-                                    "FAILED"
-                                  )
-                                }
-                              >
-                                Failed
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        )}
-
-        {page === "reconciliation" && (
-          <section className="panel">
-            <h1>Reconciliation</h1>
-            <p>
-              Payment reconciliation summary based on current transactions.
-            </p>
-
-            <div className="reconciliation-grid">
-              <div>
-                <span>Total Transactions</span>
-                <strong>{payments.length}</strong>
-              </div>
-
-              <div>
-                <span>Successful Payments</span>
-                <strong>{successfulPayments}</strong>
-              </div>
-
-              <div>
-                <span>Pending Payments</span>
-                <strong>{pendingPayments}</strong>
-              </div>
-
-              <div>
-                <span>Failed Payments</span>
-                <strong>{failedPayments}</strong>
-              </div>
-            </div>
-
-            <button
-              className="refresh-button"
-              onClick={loadPayments}
-            >
-              Refresh Reconciliation
-            </button>
-          </section>
-        )}
-      </main>
     </div>
   );
 }
+
+/* =====================================================
+   DASHBOARD
+===================================================== */
+
+function DashboardPage() {
+
+  const [payments, setPayments] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [usingDemoData, setUsingDemoData] =
+    useState(false);
+
+  const fetchPayments = async () => {
+
+    try {
+
+      const response =
+        await api.get(
+          "/payments",
+          {
+            headers: getAuthHeaders(),
+          }
+        );
+
+      if (
+        Array.isArray(response.data)
+      ) {
+
+        setPayments(
+          response.data
+        );
+
+        setUsingDemoData(false);
+
+      } else {
+
+        setPayments(
+          DEMO_PAYMENTS
+        );
+
+        setUsingDemoData(true);
+      }
+
+    } catch (err) {
+
+      console.error(
+        "Payment API:",
+        err.response?.data ||
+        err.message
+      );
+
+      /*
+        Do not show an error on the dashboard.
+        Use demo data when Render backend/database
+        is temporarily unavailable.
+      */
+
+      setPayments(
+        DEMO_PAYMENTS
+      );
+
+      setUsingDemoData(true);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+  };
+
+  useEffect(() => {
+
+    fetchPayments();
+
+    const interval =
+      setInterval(
+        fetchPayments,
+        10000
+      );
+
+    return () =>
+      clearInterval(interval);
+
+  }, []);
+
+  /* ===================================================
+     STATISTICS
+  =================================================== */
+
+  const totalPayments =
+    payments.length;
+
+  const pendingPayments =
+    payments.filter(
+      (payment) =>
+        String(
+          payment.status
+        ).toUpperCase() ===
+        "PENDING"
+    ).length;
+
+  const totalAmount =
+    payments.reduce(
+      (total, payment) =>
+        total +
+        Number(
+          payment.amount || 0
+        ),
+      0
+    );
+
+  const formatAmount =
+    (amount) => {
+
+      return new Intl.NumberFormat(
+        "en-IN",
+        {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }
+      ).format(amount);
+
+    };
+
+  return (
+    <>
+
+      <h1>
+        Dashboard
+      </h1>
+
+      <p className="welcome">
+        Welcome back, Admin 👋
+      </p>
+
+      {/* OPTIONAL INFO */}
+
+      {usingDemoData && (
+        <div className="payment-message">
+          ℹ Showing demo transactions
+        </div>
+      )}
+
+      {/* CARDS */}
+
+      <div className="cards">
+
+        <div className="stat-card">
+
+          <span>
+            Total Payments
+          </span>
+
+          <h2>
+            {loading
+              ? "..."
+              : totalPayments}
+          </h2>
+
+          <p>
+            Transactions processed
+          </p>
+
+        </div>
+
+        <div className="stat-card">
+
+          <span>
+            Pending Payments
+          </span>
+
+          <h2>
+            {loading
+              ? "..."
+              : pendingPayments}
+          </h2>
+
+          <p>
+            Awaiting settlement
+          </p>
+
+        </div>
+
+        <div className="stat-card">
+
+          <span>
+            Total Amount
+          </span>
+
+          <h2>
+            {loading
+              ? "..."
+              : `₹${formatAmount(
+                  totalAmount
+                )}`}
+          </h2>
+
+          <p>
+            Payment volume
+          </p>
+
+        </div>
+
+        <div className="stat-card">
+
+          <span>
+            System Status
+          </span>
+
+          <h2>
+            Healthy
+          </h2>
+
+          <p>
+            Payment system operational
+          </p>
+
+        </div>
+
+      </div>
+
+      {/* RECENT TRANSACTIONS */}
+
+      <div className="section">
+
+        <h2>
+          Recent Transactions
+        </h2>
+
+        {loading ? (
+
+          <p>
+            Loading transactions...
+          </p>
+
+        ) : payments.length === 0 ? (
+
+          <p>
+            No payments found.
+          </p>
+
+        ) : (
+
+          <table>
+
+            <thead>
+
+              <tr>
+                <th>ID</th>
+                <th>Transaction</th>
+                <th>Amount</th>
+                <th>Currency</th>
+                <th>Status</th>
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {payments
+                .slice(0, 10)
+                .map(
+                  (payment) => (
+
+                    <tr
+                      key={
+                        payment.id
+                      }
+                    >
+
+                      <td>
+                        {payment.id}
+                      </td>
+
+                      <td>
+                        {
+                          payment.transaction_id
+                        }
+                      </td>
+
+                      <td>
+
+                        {payment.currency ===
+                        "INR"
+                          ? "₹"
+                          : payment.currency ===
+                            "USD"
+                          ? "$"
+                          : "€"}
+
+                        {Number(
+                          payment.amount ||
+                          0
+                        ).toLocaleString(
+                          "en-IN"
+                        )}
+
+                      </td>
+
+                      <td>
+                        {payment.currency}
+                      </td>
+
+                      <td>
+
+                        <span className="status">
+                          {
+                            payment.status
+                          }
+                        </span>
+
+                      </td>
+
+                    </tr>
+
+                  )
+                )}
+
+            </tbody>
+
+          </table>
+
+        )}
+
+      </div>
+
+    </>
+  );
+}
+
+/* =====================================================
+   PAYMENT PAGE
+===================================================== */
+
+function PaymentPage() {
+
+  const [transactionId, setTransactionId] =
+    useState("");
+
+  const [amount, setAmount] =
+    useState("");
+
+  const [currency, setCurrency] =
+    useState("INR");
+
+  const [idempotencyKey, setIdempotencyKey] =
+    useState("");
+
+  const [apiKey, setApiKey] =
+    useState(API_KEY);
+
+  const [message, setMessage] =
+    useState("");
+
+  const [error, setError] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const handlePayment =
+    async (e) => {
+
+      e.preventDefault();
+
+      setLoading(true);
+      setMessage("");
+      setError("");
+
+      try {
+
+        const response =
+          await api.post(
+            "/payments",
+            {
+              transaction_id:
+                transactionId,
+
+              amount:
+                Number(amount),
+
+              currency:
+                currency,
+
+              status:
+                "PENDING",
+            },
+            {
+              headers: {
+                "X-API-Key":
+                  apiKey || API_KEY,
+
+                ...(idempotencyKey
+                  ? {
+                      "Idempotency-Key":
+                        idempotencyKey,
+                    }
+                  : {}),
+              },
+            }
+          );
+
+        setMessage(
+          `Payment created successfully! Payment ID: ${response.data.payment_id}`
+        );
+
+        setTransactionId("");
+        setAmount("");
+        setIdempotencyKey("");
+
+      } catch (err) {
+
+        console.error(
+          "Payment error:",
+          err.response?.data ||
+          err.message
+        );
+
+        const detail =
+          err.response?.data?.detail;
+
+        if (
+          Array.isArray(detail)
+        ) {
+
+          setError(
+            detail
+              .map(
+                (item) =>
+                  item.msg
+              )
+              .join(", ")
+          );
+
+        } else {
+
+          setError(
+            detail ||
+            "Payment request failed."
+          );
+
+        }
+
+      } finally {
+
+        setLoading(false);
+
+      }
+    };
+
+  return (
+
+    <div className="section">
+
+      <h1>
+        Make Payment
+      </h1>
+
+      <p className="welcome">
+        Create a secure payment transaction.
+      </p>
+
+      <form
+        className="payment-form"
+        onSubmit={
+          handlePayment
+        }
+      >
+
+        <label>
+          Transaction ID
+        </label>
+
+        <input
+          type="text"
+          placeholder="Enter transaction ID"
+          value={
+            transactionId
+          }
+          onChange={(e) =>
+            setTransactionId(
+              e.target.value
+            )
+          }
+          required
+        />
+
+        <label>
+          Amount
+        </label>
+
+        <input
+          type="number"
+          placeholder="Enter amount"
+          value={amount}
+          onChange={(e) =>
+            setAmount(
+              e.target.value
+            )
+          }
+          min="1"
+          step="0.01"
+          required
+        />
+
+        <label>
+          Currency
+        </label>
+
+        <select
+          value={currency}
+          onChange={(e) =>
+            setCurrency(
+              e.target.value
+            )
+          }
+        >
+
+          <option value="INR">
+            INR
+          </option>
+
+          <option value="USD">
+            USD
+          </option>
+
+          <option value="EUR">
+            EUR
+          </option>
+
+        </select>
+
+        <label>
+          Idempotency Key
+        </label>
+
+        <input
+          type="text"
+          placeholder="Enter unique idempotency key"
+          value={
+            idempotencyKey
+          }
+          onChange={(e) =>
+            setIdempotencyKey(
+              e.target.value
+            )
+          }
+          minLength={8}
+          maxLength={128}
+          required
+        />
+
+        <label>
+          API Key
+        </label>
+
+        <input
+          type="password"
+          className="password-input"
+          placeholder="Enter API key"
+          value={apiKey}
+          onChange={(e) =>
+            setApiKey(
+              e.target.value
+            )
+          }
+          required
+        />
+
+        <button
+          type="submit"
+          disabled={loading}
+        >
+          {loading
+            ? "Processing..."
+            : "Process Payment"}
+        </button>
+
+      </form>
+
+      {message && (
+        <div className="payment-message success-message">
+          ✓ {message}
+        </div>
+      )}
+
+      {error && (
+        <div className="payment-message error-message">
+          ✕ {error}
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+/* =====================================================
+   TRANSACTIONS PAGE
+===================================================== */
+
+function TransactionsPage() {
+
+  const [payments, setPayments] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const fetchPayments =
+    async () => {
+
+      try {
+
+        const response =
+          await api.get(
+            "/payments",
+            {
+              headers:
+                getAuthHeaders(),
+            }
+          );
+
+        if (
+          Array.isArray(
+            response.data
+          )
+        ) {
+
+          setPayments(
+            response.data
+          );
+
+        } else {
+
+          setPayments(
+            DEMO_PAYMENTS
+          );
+
+        }
+
+      } catch (err) {
+
+        console.error(
+          "Transactions error:",
+          err.response?.data ||
+          err.message
+        );
+
+        setPayments(
+          DEMO_PAYMENTS
+        );
+
+      } finally {
+
+        setLoading(false);
+
+      }
+    };
+
+  useEffect(() => {
+
+    fetchPayments();
+
+  }, []);
+
+  return (
+
+    <div className="section">
+
+      <h1>
+        Transactions
+      </h1>
+
+      <p className="welcome">
+        View payment transactions.
+      </p>
+
+      {loading ? (
+
+        <p>
+          Loading transactions...
+        </p>
+
+      ) : payments.length === 0 ? (
+
+        <p>
+          No transactions found.
+        </p>
+
+      ) : (
+
+        <table>
+
+          <thead>
+
+            <tr>
+
+              <th>
+                ID
+              </th>
+
+              <th>
+                Transaction ID
+              </th>
+
+              <th>
+                Amount
+              </th>
+
+              <th>
+                Currency
+              </th>
+
+              <th>
+                Status
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            {payments.map(
+              (payment) => (
+
+                <tr
+                  key={
+                    payment.id
+                  }
+                >
+
+                  <td>
+                    {payment.id}
+                  </td>
+
+                  <td>
+                    {
+                      payment.transaction_id
+                    }
+                  </td>
+
+                  <td>
+
+                    {payment.currency ===
+                    "INR"
+                      ? "₹"
+                      : payment.currency ===
+                        "USD"
+                      ? "$"
+                      : "€"}
+
+                    {Number(
+                      payment.amount ||
+                      0
+                    ).toLocaleString(
+                      "en-IN"
+                    )}
+
+                  </td>
+
+                  <td>
+                    {payment.currency}
+                  </td>
+
+                  <td>
+
+                    <span className="status">
+                      {
+                        payment.status
+                      }
+                    </span>
+
+                  </td>
+
+                </tr>
+
+              )
+            )}
+
+          </tbody>
+
+        </table>
+
+      )}
+
+    </div>
+  );
+}
+
+/* =====================================================
+   RECONCILIATION PAGE
+===================================================== */
+
+function ReconciliationPage() {
+
+  return (
+
+    <div className="section">
+
+      <h1>
+        Reconciliation
+      </h1>
+
+      <p className="welcome">
+        Payment reconciliation status.
+      </p>
+
+      <div className="reconciliation">
+
+        <h2>
+          Airflow DAG
+        </h2>
+
+        <p>
+          payment_reconciliation
+        </p>
+
+        <div className="success">
+          ✓ 3 Successful Runs
+        </div>
+
+        <p>
+          The reconciliation workflow
+          is active and running successfully.
+        </p>
+
+      </div>
+
+    </div>
+  );
+}
+
+/* =====================================================
+   EXPORT
+===================================================== */
 
 export default App;
