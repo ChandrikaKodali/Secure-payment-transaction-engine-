@@ -1,6 +1,9 @@
 ## 🚀 Live Demo
 
-🔗 [Secure Payment Engine – Live Demo](https://secure-payment-transaction-engine.onrender.com/docs)
+🔗 [Secure Payment Engine – Live Demo](https://secure-payment-engine-frontend.onrender.com)
+### Demo Login
+- **Username:** `admin`
+- **Password:** `admin123`
 
 # Secure Payment Transaction Engine
 
