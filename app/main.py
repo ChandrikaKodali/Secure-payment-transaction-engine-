@@ -1,32 +1,76 @@
-from fastapi import FastAPI, Header, Security, HTTPException
+from fastapi import FastAPI, HTTPException, Security
+from fastapi.security import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Literal
+import os
+import psycopg2
+from psycopg2.errors import UniqueViolation
+from dotenv import load_dotenv
 
-from app.models import Payment, StatusUpdate
-from app.database import get_connection
-from app.security.auth import verify_api_key, api_key_header
-from app.services.payment_service import create_payment, update_status
+from app.models import Payment
 
+from pathlib import Path
 
-# ============================================================
-# FASTAPI APPLICATION
-# ============================================================
+# --------------------------------------------------
+# Load environment variables
+# --------------------------------------------------
 
-app = FastAPI(
-    title="Secure Payment Transaction Engine",
-    version="2.0.0"
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
+
+API_KEY = os.getenv("API_KEY")
+
+# --------------------------------------------------
+# API Key configuration
+# --------------------------------------------------
+
+api_key_header = APIKeyHeader(
+    name="X-API-Key",
+    auto_error=False
 )
 
 
-# ============================================================
-# CORS CONFIGURATION
-# Allows React frontend to communicate with FastAPI backend
-# ============================================================
+def verify_api_key(x_api_key: str | None):
+    if not API_KEY:
+        raise HTTPException(
+            status_code=500,
+            detail="API_KEY is not configured on the server"
+        )
+
+    if not x_api_key:
+        raise HTTPException(
+            status_code=401,
+            detail="Missing API key"
+        )
+
+    if x_api_key != API_KEY:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+
+
+# --------------------------------------------------
+# FastAPI application
+# --------------------------------------------------
+
+app = FastAPI(
+    title="Secure Payment Transaction Engine",
+    description="A secure payment transaction processing API",
+    version="1.0.0"
+)
+
+# --------------------------------------------------
+# CORS
+# --------------------------------------------------
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://secure-payment-engine-frontend.onrender.com",
         "http://localhost:5173",
-        "http://127.0.0.1:5173",
+        "http://localhost:3000"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -34,205 +78,317 @@ app.add_middleware(
 )
 
 
-# ============================================================
-# HEALTH CHECK
-# ============================================================
+# --------------------------------------------------
+# Request models
+# --------------------------------------------------
+
+class StatusUpdate(BaseModel):
+    status: Literal["PENDING", "SUCCESS", "FAILED"]
+
+
+# --------------------------------------------------
+# Status transition validation
+# --------------------------------------------------
+
+def is_valid_status_transition(
+    current_status: str,
+    new_status: str
+):
+    allowed_transitions = {
+        "PENDING": ["PENDING", "SUCCESS", "FAILED"],
+        "SUCCESS": ["SUCCESS"],
+        "FAILED": ["FAILED"]
+    }
+
+    return new_status in allowed_transitions.get(
+        current_status,
+        []
+    )
+
+
+# --------------------------------------------------
+# Database connection
+# --------------------------------------------------
+
+def get_connection():
+    return psycopg2.connect(
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        database=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD")
+    )
+
+
+# --------------------------------------------------
+# Health check
+# --------------------------------------------------
 
 @app.get("/health")
 def health_check():
     return {
-        "status": "OK"
+        "status": "OK",
+        "service": "Secure Payment Transaction Engine"
     }
 
 
-# ============================================================
-# CREATE PAYMENT
-# ============================================================
+# --------------------------------------------------
+# Create payment
+# --------------------------------------------------
 
-@app.post("/payments", status_code=201)
-def create_payment_endpoint(
+@app.post("/payments")
+def create_payment(
     payment: Payment,
-
-    idempotency_key: str = Header(
-        ...,
-        alias="Idempotency-Key",
-        min_length=8,
-        max_length=128
-    ),
-
-    x_api_key: str | None = Security(api_key_header),
+    x_api_key: str | None = Security(api_key_header)
 ):
-
-    # Verify API key
     verify_api_key(x_api_key)
 
-    # Create payment
-    row, replayed = create_payment(
-        payment,
-        idempotency_key
-    )
+    if payment.amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Amount must be greater than 0"
+        )
 
-    # Prepare response
-    result = {
-        "message": (
-            "Payment already exists"
-            if replayed
-            else "Payment created successfully"
-        ),
+    connection = get_connection()
+    cursor = connection.cursor()
 
-        "payment_id": row[0],
+    try:
+        cursor.execute(
+            """
+            INSERT INTO payments
+            (transaction_id, amount, currency, status)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+            """,
+            (
+                payment.transaction_id,
+                payment.amount,
+                payment.currency,
+                payment.status
+            )
+        )
 
-        "transaction_id": row[1],
+        payment_id = cursor.fetchone()[0]
 
-        "amount": row[2],
+        connection.commit()
 
-        "currency": row[3],
+        return {
+            "message": "Payment created successfully",
+            "payment_id": payment_id,
+            "transaction_id": payment.transaction_id,
+            "amount": payment.amount,
+            "currency": payment.currency,
+            "status": payment.status
+        }
 
-        "status": row[4],
+    except UniqueViolation:
+        connection.rollback()
 
-        "idempotent_replay": replayed,
-    }
+        raise HTTPException(
+            status_code=409,
+            detail="Transaction ID already exists"
+        )
 
-    return result
+    finally:
+        cursor.close()
+        connection.close()
 
 
-# ============================================================
-# GET ALL PAYMENTS
-# ============================================================
+# --------------------------------------------------
+# Get all payments
+# --------------------------------------------------
 
 @app.get("/payments")
 def get_payments(
     x_api_key: str | None = Security(api_key_header)
 ):
-
-    # Verify API key
     verify_api_key(x_api_key)
 
-    # Connect to PostgreSQL
-    with get_connection() as connection:
+    connection = get_connection()
+    cursor = connection.cursor()
 
-        with connection.cursor() as cursor:
+    try:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                transaction_id,
+                amount,
+                currency,
+                status,
+                created_at
+            FROM payments
+            ORDER BY id
+            """
+        )
 
-            cursor.execute(
-                """
-                SELECT
-                    id,
-                    transaction_id,
-                    amount,
-                    currency,
-                    status,
-                    created_at
-                FROM payments
-                ORDER BY id DESC
-                """
-            )
+        rows = cursor.fetchall()
 
-            rows = cursor.fetchall()
+        payments = []
 
-    # Convert database rows to JSON
-    return [
-        {
-            "id": r[0],
-            "transaction_id": r[1],
-            "amount": r[2],
-            "currency": r[3],
-            "status": r[4],
-            "created_at": r[5],
-        }
+        for row in rows:
+            payments.append({
+                "id": row[0],
+                "transaction_id": row[1],
+                "amount": float(row[2]),
+                "currency": row[3],
+                "status": row[4],
+                "created_at": row[5]
+            })
 
-        for r in rows
-    ]
+        return payments
+
+    finally:
+        cursor.close()
+        connection.close()
 
 
-# ============================================================
-# GET SINGLE PAYMENT
-# ============================================================
+# --------------------------------------------------
+# Get payment by transaction ID
+# --------------------------------------------------
 
 @app.get("/payments/{transaction_id}")
 def get_payment(
     transaction_id: str,
-
     x_api_key: str | None = Security(api_key_header)
 ):
-
-    # Verify API key
     verify_api_key(x_api_key)
 
-    # Search payment
-    with get_connection() as connection:
+    connection = get_connection()
+    cursor = connection.cursor()
 
-        with connection.cursor() as cursor:
-
-            cursor.execute(
-                """
-                SELECT
-                    id,
-                    transaction_id,
-                    amount,
-                    currency,
-                    status,
-                    created_at
-                FROM payments
-                WHERE transaction_id = %s
-                """,
-
-                (transaction_id,)
-            )
-
-            row = cursor.fetchone()
-
-    # Payment not found
-    if not row:
-
-        raise HTTPException(
-            status_code=404,
-            detail="Payment not found"
+    try:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                transaction_id,
+                amount,
+                currency,
+                status,
+                created_at
+            FROM payments
+            WHERE transaction_id = %s
+            """,
+            (transaction_id,)
         )
 
-    return {
-        "id": row[0],
-        "transaction_id": row[1],
-        "amount": row[2],
-        "currency": row[3],
-        "status": row[4],
-        "created_at": row[5],
-    }
+        result = cursor.fetchone()
+
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found"
+            )
+
+        return {
+            "id": result[0],
+            "transaction_id": result[1],
+            "amount": float(result[2]),
+            "currency": result[3],
+            "status": result[4],
+            "created_at": result[5]
+        }
+
+    finally:
+        cursor.close()
+        connection.close()
 
 
-# ============================================================
-# UPDATE PAYMENT STATUS
-# ============================================================
+# --------------------------------------------------
+# Update payment status
+# --------------------------------------------------
 
 @app.put("/payments/{transaction_id}/status")
 def update_payment_status(
-
     transaction_id: str,
-
     status_update: StatusUpdate,
-
-    x_api_key: str | None = Security(api_key_header),
+    x_api_key: str | None = Security(api_key_header)
 ):
-
-    # Verify API key
     verify_api_key(x_api_key)
 
-    # Update status
-    old_status, new_status = update_status(
-        transaction_id,
-        status_update.status
-    )
+    connection = get_connection()
+    cursor = connection.cursor()
 
-    return {
+    try:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                transaction_id,
+                amount,
+                currency,
+                status,
+                created_at
+            FROM payments
+            WHERE transaction_id = %s
+            """,
+            (transaction_id,)
+        )
 
-        "message":
-            "Payment status updated successfully",
+        result = cursor.fetchone()
 
-        "transaction_id":
-            transaction_id,
+        if not result:
+            raise HTTPException(
+                status_code=404,
+                detail="Payment not found"
+            )
 
-        "old_status":
-            old_status,
+        current_status = result[4]
+        new_status = status_update.status
 
-        "new_status":
-            new_status,
-    }
+        # Validate status transition
+        if not is_valid_status_transition(
+            current_status,
+            new_status
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": "Payment status update failed",
+                    "error": (
+                        f"Invalid status transition: "
+                        f"{current_status} -> {new_status}"
+                    )
+                }
+            )
+
+        # Update payment
+        cursor.execute(
+            """
+            UPDATE payments
+            SET status = %s
+            WHERE transaction_id = %s
+            """,
+            (
+                new_status,
+                transaction_id
+            )
+        )
+
+        # Add audit log
+        cursor.execute(
+            """
+            INSERT INTO payment_audit_logs
+            (transaction_id, old_status, new_status)
+            VALUES (%s, %s, %s)
+            """,
+            (
+                transaction_id,
+                current_status,
+                new_status
+            )
+        )
+
+        connection.commit()
+
+        return {
+            "message": "Payment status updated successfully",
+            "transaction_id": transaction_id,
+            "old_status": current_status,
+            "new_status": new_status
+        }
+
+    finally:
+        cursor.close()
+        connection.close()
