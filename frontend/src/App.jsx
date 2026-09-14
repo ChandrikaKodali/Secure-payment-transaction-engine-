@@ -13,9 +13,9 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
+    "X-API-Key": "securepay-demo-2026-key",
   },
 });
-
 
 /* =====================================================
    MAIN APP
@@ -43,7 +43,6 @@ function App() {
     }
   };
 
-
   /* ===================================================
      LOGIN PAGE
   =================================================== */
@@ -51,26 +50,17 @@ function App() {
   if (!loggedIn) {
     return (
       <div className="login-page">
-
         <div className="login-card">
+          <div className="logo">₹</div>
 
-          <div className="logo">
-            ₹
-          </div>
-
-          <h1>
-            Secure Payment Engine
-          </h1>
+          <h1>Secure Payment Engine</h1>
 
           <p className="subtitle">
             Secure • Reliable • Fast Payments
           </p>
 
           <form onSubmit={handleLogin}>
-
-            <label htmlFor="username">
-              Username
-            </label>
+            <label htmlFor="username">Username</label>
 
             <input
               id="username"
@@ -81,9 +71,7 @@ function App() {
               required
             />
 
-            <label htmlFor="password">
-              Password
-            </label>
+            <label htmlFor="password">Password</label>
 
             <input
               id="password"
@@ -95,22 +83,16 @@ function App() {
               className="password-input"
             />
 
-            <button type="submit">
-              LOGIN
-            </button>
-
+            <button type="submit">LOGIN</button>
           </form>
 
           <p className="demo">
             Demo: admin / admin123
           </p>
-
         </div>
-
       </div>
     );
   }
-
 
   /* ===================================================
      LOGGED-IN APPLICATION
@@ -119,28 +101,16 @@ function App() {
   return (
     <div className="app">
 
-      {/* =================================================
-         NAVBAR
-      ================================================= */}
+      {/* NAVBAR */}
 
       <header className="navbar">
-
         <div className="brand">
-
-          <div className="brand-logo">
-            ₹
-          </div>
+          <div className="brand-logo">₹</div>
 
           <div>
-            <h2>
-              SecurePay
-            </h2>
-
-            <span>
-              Payment Transaction Engine
-            </span>
+            <h2>SecurePay</h2>
+            <span>Payment Transaction Engine</span>
           </div>
-
         </div>
 
         <button
@@ -149,19 +119,13 @@ function App() {
         >
           Logout
         </button>
-
       </header>
 
-
-      {/* =================================================
-         MAIN LAYOUT
-      ================================================= */}
+      {/* MAIN LAYOUT */}
 
       <div className="layout">
 
-        {/* =================================================
-           SIDEBAR
-        ================================================= */}
+        {/* SIDEBAR */}
 
         <aside className="sidebar">
 
@@ -171,13 +135,10 @@ function App() {
                 ? "active"
                 : ""
             }
-            onClick={() =>
-              setActivePage("dashboard")
-            }
+            onClick={() => setActivePage("dashboard")}
           >
             🏠 Dashboard
           </button>
-
 
           <button
             className={
@@ -185,13 +146,10 @@ function App() {
                 ? "active"
                 : ""
             }
-            onClick={() =>
-              setActivePage("payment")
-            }
+            onClick={() => setActivePage("payment")}
           >
             💳 Make Payment
           </button>
-
 
           <button
             className={
@@ -199,13 +157,10 @@ function App() {
                 ? "active"
                 : ""
             }
-            onClick={() =>
-              setActivePage("transactions")
-            }
+            onClick={() => setActivePage("transactions")}
           >
             📋 Transactions
           </button>
-
 
           <button
             className={
@@ -213,19 +168,14 @@ function App() {
                 ? "active"
                 : ""
             }
-            onClick={() =>
-              setActivePage("reconciliation")
-            }
+            onClick={() => setActivePage("reconciliation")}
           >
             🔄 Reconciliation
           </button>
 
         </aside>
 
-
-        {/* =================================================
-           CONTENT
-        ================================================= */}
+        {/* CONTENT */}
 
         <main className="content">
 
@@ -253,7 +203,6 @@ function App() {
   );
 }
 
-
 /* =====================================================
    DASHBOARD PAGE
 ===================================================== */
@@ -264,10 +213,7 @@ function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-
-  /* ===================================================
-     FETCH PAYMENTS
-  =================================================== */
+  /* FETCH PAYMENTS */
 
   const fetchPayments = async () => {
 
@@ -301,10 +247,7 @@ function DashboardPage() {
     }
   };
 
-
-  /* ===================================================
-     INITIAL LOAD + AUTO REFRESH
-  =================================================== */
+  /* INITIAL LOAD + AUTO REFRESH */
 
   useEffect(() => {
 
@@ -319,14 +262,9 @@ function DashboardPage() {
 
   }, []);
 
+  /* CALCULATE STATISTICS */
 
-  /* ===================================================
-     CALCULATE STATISTICS
-  =================================================== */
-
-  const totalPayments =
-    payments.length;
-
+  const totalPayments = payments.length;
 
   const pendingPayments =
     payments.filter(
@@ -335,7 +273,6 @@ function DashboardPage() {
         "PENDING"
     ).length;
 
-
   const totalAmount =
     payments.reduce(
       (total, payment) =>
@@ -343,10 +280,7 @@ function DashboardPage() {
       0
     );
 
-
-  /* ===================================================
-     FORMAT AMOUNT
-  =================================================== */
+  /* FORMAT AMOUNT */
 
   const formatAmount = (amount) => {
 
@@ -360,18 +294,14 @@ function DashboardPage() {
 
   };
 
-
   return (
     <>
 
-      <h1>
-        Dashboard
-      </h1>
+      <h1>Dashboard</h1>
 
       <p className="welcome">
         Welcome back, Admin 👋
       </p>
-
 
       {/* ERROR */}
 
@@ -381,18 +311,13 @@ function DashboardPage() {
         </div>
       )}
 
-
-      {/* =================================================
-         STAT CARDS
-      ================================================= */}
+      {/* STAT CARDS */}
 
       <div className="cards">
 
         <div className="stat-card">
 
-          <span>
-            Total Payments
-          </span>
+          <span>Total Payments</span>
 
           <h2>
             {loading
@@ -406,12 +331,9 @@ function DashboardPage() {
 
         </div>
 
-
         <div className="stat-card">
 
-          <span>
-            Pending Payments
-          </span>
+          <span>Pending Payments</span>
 
           <h2>
             {loading
@@ -425,12 +347,9 @@ function DashboardPage() {
 
         </div>
 
-
         <div className="stat-card">
 
-          <span>
-            Total Amount
-          </span>
+          <span>Total Amount</span>
 
           <h2>
             {loading
@@ -444,12 +363,9 @@ function DashboardPage() {
 
         </div>
 
-
         <div className="stat-card">
 
-          <span>
-            System Status
-          </span>
+          <span>System Status</span>
 
           <h2>
             {error
@@ -467,17 +383,13 @@ function DashboardPage() {
 
       </div>
 
-
-      {/* =================================================
-         RECENT TRANSACTIONS
-      ================================================= */}
+      {/* RECENT TRANSACTIONS */}
 
       <div className="section">
 
         <h2>
           Recent Transactions
         </h2>
-
 
         {loading ? (
 
@@ -527,6 +439,7 @@ function DashboardPage() {
                       {payment.currency === "INR"
                         ? "₹"
                         : ""}
+
                       {Number(
                         payment.amount || 0
                       ).toLocaleString("en-IN")}
@@ -558,7 +471,6 @@ function DashboardPage() {
   );
 }
 
-
 /* =====================================================
    PAYMENT PAGE
 ===================================================== */
@@ -589,10 +501,7 @@ function PaymentPage() {
   const [loading, setLoading] =
     useState(false);
 
-
-  /* ===================================================
-     CREATE PAYMENT
-  =================================================== */
+  /* CREATE PAYMENT */
 
   const handlePayment = async (e) => {
 
@@ -602,42 +511,29 @@ function PaymentPage() {
     setMessage("");
     setError("");
 
-
     try {
 
       const response = await api.post(
-
         "/payments",
-
         {
           transaction_id: transactionId,
           amount: Number(amount),
           currency: currency,
         },
-
         {
           headers: {
-
-            "Idempotency-Key":
-              idempotencyKey,
-
+            "Idempotency-Key": idempotencyKey,
             "X-API-Key":
-              apiKey,
-
+              apiKey || "securepay-demo-2026-key",
           },
         }
-
       );
-
 
       setMessage(
         response.data?.idempotent_replay
           ? `Payment already exists. Payment ID: ${response.data.payment_id}`
           : `Payment created successfully! Payment ID: ${response.data.payment_id}`
       );
-
-
-      /* Clear form */
 
       setTransactionId("");
       setAmount("");
@@ -650,20 +546,17 @@ function PaymentPage() {
         err
       );
 
-
       if (err.response) {
 
         const detail =
           err.response.data?.detail;
-
 
         if (Array.isArray(detail)) {
 
           setError(
             detail
               .map(
-                (item) =>
-                  item.msg
+                (item) => item.msg
               )
               .join(", ")
           );
@@ -690,9 +583,7 @@ function PaymentPage() {
       setLoading(false);
 
     }
-
   };
-
 
   return (
 
@@ -705,7 +596,6 @@ function PaymentPage() {
       <p className="welcome">
         Create a secure payment transaction.
       </p>
-
 
       <form
         className="payment-form"
@@ -730,7 +620,6 @@ function PaymentPage() {
           required
         />
 
-
         {/* AMOUNT */}
 
         <label>
@@ -750,7 +639,6 @@ function PaymentPage() {
           step="0.01"
           required
         />
-
 
         {/* CURRENCY */}
 
@@ -781,7 +669,6 @@ function PaymentPage() {
 
         </select>
 
-
         {/* IDEMPOTENCY KEY */}
 
         <label>
@@ -802,7 +689,6 @@ function PaymentPage() {
           required
         />
 
-
         {/* API KEY */}
 
         <label>
@@ -822,53 +708,38 @@ function PaymentPage() {
           required
         />
 
-
         {/* BUTTON */}
 
         <button
           type="submit"
           disabled={loading}
         >
-
           {loading
             ? "Processing..."
             : "Process Payment"}
-
         </button>
 
       </form>
 
-
-      {/* SUCCESS MESSAGE */}
+      {/* SUCCESS */}
 
       {message && (
-
         <div className="payment-message success-message">
-
           ✓ {message}
-
         </div>
-
       )}
 
-
-      {/* ERROR MESSAGE */}
+      {/* ERROR */}
 
       {error && (
-
         <div className="payment-message error-message">
-
           ✕ {error}
-
         </div>
-
       )}
 
     </div>
-
   );
 }
-
 
 /* =====================================================
    TRANSACTIONS PAGE
@@ -885,10 +756,7 @@ function TransactionsPage() {
   const [error, setError] =
     useState("");
 
-
-  /* ===================================================
-     FETCH TRANSACTIONS
-  =================================================== */
+  /* FETCH TRANSACTIONS */
 
   const fetchPayments = async () => {
 
@@ -921,9 +789,7 @@ function TransactionsPage() {
       setLoading(false);
 
     }
-
   };
-
 
   useEffect(() => {
 
@@ -940,7 +806,6 @@ function TransactionsPage() {
 
   }, []);
 
-
   return (
 
     <div className="section">
@@ -953,17 +818,11 @@ function TransactionsPage() {
         View payment transactions.
       </p>
 
-
       {error && (
-
         <div className="payment-message error-message">
-
           ✕ {error}
-
         </div>
-
       )}
-
 
       {loading ? (
 
@@ -984,31 +843,14 @@ function TransactionsPage() {
           <thead>
 
             <tr>
-
-              <th>
-                ID
-              </th>
-
-              <th>
-                Transaction ID
-              </th>
-
-              <th>
-                Amount
-              </th>
-
-              <th>
-                Currency
-              </th>
-
-              <th>
-                Status
-              </th>
-
+              <th>ID</th>
+              <th>Transaction ID</th>
+              <th>Amount</th>
+              <th>Currency</th>
+              <th>Status</th>
             </tr>
 
           </thead>
-
 
           <tbody>
 
@@ -1026,14 +868,17 @@ function TransactionsPage() {
                   </td>
 
                   <td>
+
                     {payment.currency === "INR"
                       ? "₹"
                       : ""}
+
                     {Number(
                       payment.amount || 0
                     ).toLocaleString(
                       "en-IN"
                     )}
+
                   </td>
 
                   <td>
@@ -1060,10 +905,8 @@ function TransactionsPage() {
       )}
 
     </div>
-
   );
 }
-
 
 /* =====================================================
    RECONCILIATION PAGE
@@ -1082,7 +925,6 @@ function ReconciliationPage() {
       <p className="welcome">
         Payment reconciliation status.
       </p>
-
 
       <div className="reconciliation">
 
@@ -1106,10 +948,8 @@ function ReconciliationPage() {
       </div>
 
     </div>
-
   );
 }
-
 
 /* =====================================================
    EXPORT
